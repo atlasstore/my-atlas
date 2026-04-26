@@ -16,21 +16,21 @@
  *   ISSUE-11 revoked_tokens cleanup on startup
  * ════════════════════════════════════════════════════════════════
  */
-
+ 
 "use strict";
-
+ 
 require("dotenv").config();
-
+ 
 const express      = require("express");
 const path         = require("path");
-const bcrypt = require("bcryptjs");
+const crypto       = require("crypto");
 const jwt          = require("jsonwebtoken");
 const { Pool }     = require("pg");
-
+const bcrypt = require("bcryptjs");
 const serverless   = require("serverless-http");
-
+ 
 const app = express();
-
+ 
 // ── Logger ────────────────────────────────────────────────────
 function log(level, msg, detail) {
   const line = `[${new Date().toISOString()}] [${level}] ${msg}`;
@@ -43,7 +43,7 @@ function maskIp(ip) {
   if (parts.length === 4) return `${parts[0]}.${parts[1]}.x.x`;
   return ip.split(":").slice(0, 4).join(":") + "::";
 }
-
+ 
 // ── Environment validation ────────────────────────────────────
 const JWT_SECRET           = process.env.JWT_SECRET;
 const ADMIN_EMAIL          = process.env.ADMIN_EMAIL;
@@ -55,12 +55,12 @@ const PAYPAL_ENV_RAW       = (process.env.PAYPAL_ENV || "sandbox").toLowerCase()
 const CJ_API_KEY           = process.env.CJ_API_KEY   || "";
 const CJ_EMAIL             = process.env.CJ_EMAIL     || "";
 const DATABASE_URL         = process.env.DATABASE_URL;
-
+ 
 function fatalEnvError(msg) {
   console.error(`\n\x1b[31m[FATAL] ${msg}\x1b[0m\n`);
   process.exit(1);
 }
-
+ 
 if (!JWT_SECRET || JWT_SECRET.length < 32 || JWT_SECRET.startsWith("REPLACE_"))
   fatalEnvError("JWT_SECRET is missing, too short, or a placeholder.");
 if (!ADMIN_EMAIL || !ADMIN_PASS_HASH || ADMIN_PASS_HASH.startsWith("REPLACE_") || !ADMIN_PASS_HASH.startsWith("$2"))
@@ -73,9 +73,9 @@ if (PAYPAL_ENV_RAW === "production" && (!PAYPAL_CLIENT_SECRET || PAYPAL_CLIENT_S
   fatalEnvError("PAYPAL_CLIENT_SECRET must be set when PAYPAL_ENV=production.");
 if (!DATABASE_URL || DATABASE_URL.startsWith("YOUR_") || DATABASE_URL.startsWith("REPLACE_"))
   fatalEnvError("DATABASE_URL is not configured. Provide a PostgreSQL connection string.");
-
+ 
 const PAYPAL_ENV = PAYPAL_ENV_RAW;
-
+ 
 // ── PostgreSQL pool ───────────────────────────────────────────
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -84,7 +84,7 @@ const pool = new Pool({
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 5000,
 });
-
+ 
 async function query(sql, params = []) {
   const client = await pool.connect();
   try {
@@ -98,7 +98,7 @@ async function queryOne(sql, params = []) {
   const rows = await query(sql, params);
   return rows[0] || null;
 }
-
+ 
 // ── Schema bootstrap ──────────────────────────────────────────
 async function initDb() {
   await query(`
@@ -113,7 +113,7 @@ async function initDb() {
       supplier_sku TEXT    NOT NULL DEFAULT '',
       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-
+ 
     CREATE TABLE IF NOT EXISTS orders (
       id              TEXT PRIMARY KEY,
       paypal_order_id TEXT    NOT NULL DEFAULT '' UNIQUE,
@@ -131,54 +131,54 @@ async function initDb() {
       cj_order_id     TEXT    NOT NULL DEFAULT '',
       created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-
+ 
     CREATE TABLE IF NOT EXISTS login_attempts (
       ip            TEXT PRIMARY KEY,
       count         INTEGER NOT NULL DEFAULT 0,
       blocked_until TIMESTAMPTZ DEFAULT NULL,
       updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-
+ 
     CREATE TABLE IF NOT EXISTS revoked_tokens (
       jti        TEXT PRIMARY KEY,
       expires_at TIMESTAMPTZ NOT NULL
     );
-
+ 
     -- BUG-06: CSRF tokens in PostgreSQL (survives cold starts)
     CREATE TABLE IF NOT EXISTS csrf_tokens (
       token      TEXT PRIMARY KEY,
       expires_at TIMESTAMPTZ NOT NULL
     );
-
+ 
     -- BUG-05: API rate limiting in PostgreSQL
     CREATE TABLE IF NOT EXISTS rate_limits (
       ip         TEXT PRIMARY KEY,
       count      INTEGER NOT NULL DEFAULT 0,
       window_end TIMESTAMPTZ NOT NULL
     );
-
+ 
     -- BUG-02: Newsletter subscribers
     CREATE TABLE IF NOT EXISTS newsletters (
       email      TEXT PRIMARY KEY,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-
+ 
   // ISSUE-11: clean up expired tokens on startup
   await query("DELETE FROM revoked_tokens WHERE expires_at < NOW()");
   await query("DELETE FROM csrf_tokens WHERE expires_at < NOW()");
   await query("DELETE FROM rate_limits WHERE window_end < NOW()");
-
+ 
   log("INFO", "Database schema verified / initialised");
 }
-
+ 
 let _dbReady = false;
 async function ensureDb() {
   if (_dbReady) return;
   await initDb();
   _dbReady = true;
 }
-
+ 
 // ── Input helpers ─────────────────────────────────────────────
 function str(v, max = 1000) {
   if (v === null || v === undefined) return "";
@@ -198,20 +198,20 @@ function posFloat(v, maxV = 999999) {
   const n = parseFloat(v);
   return (!isNaN(n) && n > 0 && n <= maxV) ? Math.round(n * 100) / 100 : null;
 }
-
+ 
 // ════════════════════════════════════════════════════════════
 // Express Middleware
 // ════════════════════════════════════════════════════════════
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "512kb" }));
 app.use(express.urlencoded({ extended: false, limit: "512kb" }));
-
+ 
 // Lazy DB init
 app.use(async (_req, _res, next) => {
   try { await ensureDb(); next(); }
   catch (e) { log("ERROR", "DB init failed", e.message); next(e); }
 });
-
+ 
 // Security headers
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options",  "nosniff");
@@ -231,7 +231,7 @@ app.use((_req, res, next) => {
   res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   next();
 });
-
+ 
 // CORS
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || null;
 app.use((req, res, next) => {
@@ -245,7 +245,7 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
-
+ 
 // Block sensitive file extensions
 app.use((req, res, next) => {
   const p = req.path.toLowerCase();
@@ -253,7 +253,7 @@ app.use((req, res, next) => {
     return res.status(404).end();
   next();
 });
-
+ 
 // BUG-05: API rate limiter — PostgreSQL backed, survives cold starts
 app.use("/api", async (req, res, next) => {
   const ip = req.ip || "0.0.0.0";
@@ -274,9 +274,9 @@ app.use("/api", async (req, res, next) => {
   } catch (_) { /* non-fatal — allow through if rate limit table fails */ }
   next();
 });
-
+ 
 app.use((req, _res, next) => { log("INFO", `${req.method} ${req.path}`); next(); });
-
+ 
 // ── JWT ───────────────────────────────────────────────────────
 function auth(req, res, next) {
   const hdr = req.headers["authorization"] || "";
@@ -293,7 +293,7 @@ function auth(req, res, next) {
     res.status(403).json({ success: false, message: "Invalid or expired session. Please log in again." });
   }
 }
-
+ 
 function makeToken(email) {
   return jwt.sign(
     { sub: email, role: "admin", jti: crypto.randomBytes(16).toString("hex") },
@@ -301,7 +301,7 @@ function makeToken(email) {
     { algorithm: "HS256", expiresIn: "8h" }
   );
 }
-
+ 
 // ── CSRF — BUG-06: PostgreSQL backed ─────────────────────────
 async function newCsrf() {
   const t = crypto.randomBytes(32).toString("hex");
@@ -312,7 +312,7 @@ async function newCsrf() {
   );
   return t;
 }
-
+ 
 async function checkCsrfMiddleware(req, res, next) {
   const t = req.headers["x-csrf-token"] || "";
   if (!t) return res.status(403).json({ success: false, message: "CSRF validation failed." });
@@ -323,7 +323,7 @@ async function checkCsrfMiddleware(req, res, next) {
   if (!row) return res.status(403).json({ success: false, message: "CSRF token invalid or expired." });
   next();
 }
-
+ 
 // ── Brute-force ───────────────────────────────────────────────
 async function loginGuard(ip) {
   const now = new Date().toISOString();
@@ -350,14 +350,14 @@ async function clearGuard(ip) {
   await query("UPDATE login_attempts SET count=0, blocked_until=NULL, updated_at=$1 WHERE ip=$2",
     [new Date().toISOString(), ip]);
 }
-
+ 
 // ── PayPal ────────────────────────────────────────────────────
 const PP_BASE = PAYPAL_ENV === "production"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
-
+ 
 let _ppToken = null, _ppTokenExp = 0;
-
+ 
 async function ppAccessToken() {
   if (!PAYPAL_CLIENT_SECRET) return null;
   if (_ppToken && Date.now() < _ppTokenExp) return _ppToken;
@@ -388,7 +388,7 @@ async function ppAccessToken() {
     return null;
   } finally { clearTimeout(tid); }
 }
-
+ 
 async function verifyPayPal(orderId, expectedAmount) {
   if (!PAYPAL_CLIENT_SECRET) {
     log("WARN", "PayPal secret not set — skipping server-side verification (sandbox dev mode)");
@@ -418,11 +418,11 @@ async function verifyPayPal(orderId, expectedAmount) {
     return { ok: false, reason: e.name === "AbortError" ? "PayPal API timeout" : "Verification error" };
   }
 }
-
+ 
 // ── CJ Dropshipping ───────────────────────────────────────────
 const CJ_BASE = "https://developers.cjdropshipping.com/api2.0";
 let _cjToken = null, _cjTokenExp = 0;
-
+ 
 async function cjAccessToken() {
   if (!CJ_API_KEY || !CJ_EMAIL) return null;
   if (_cjToken && Date.now() < _cjTokenExp) return _cjToken;
@@ -443,7 +443,7 @@ async function cjAccessToken() {
     return _cjToken || null;
   } finally { clearTimeout(tid); }
 }
-
+ 
 async function submitToCJ({ orderId, items, shipping }) {
   if (!CJ_API_KEY || !CJ_EMAIL) { log("WARN", "CJ not configured — skipping"); return null; }
   const token = await cjAccessToken();
@@ -470,7 +470,7 @@ async function submitToCJ({ orderId, items, shipping }) {
     return String(d.data.orderId);
   } finally { clearTimeout(tid); }
 }
-
+ 
 function submitToCJAsync(orderId, items, shipping) {
   setImmediate(async () => {
     try {
@@ -484,22 +484,22 @@ function submitToCJAsync(orderId, items, shipping) {
     } catch (e) { log("ERROR", `CJ submission failed for ${orderId}`, e.message); }
   });
 }
-
+ 
 // ════════════════════════════════════════════════════════════
 // Routes
 // ════════════════════════════════════════════════════════════
-
+ 
 app.get("/api/config/paypal", (_req, res) =>
   res.json({ clientId: PAYPAL_CLIENT_ID || null })
 );
-
+ 
 app.get("/api/csrf-token", auth, async (_req, res) => {
   try {
     const t = await newCsrf();
     res.json({ token: t });
   } catch (e) { res.status(500).json({ success: false, message: "CSRF error." }); }
 });
-
+ 
 app.get("/api/status", async (_req, res) => {
   try {
     const p = await queryOne("SELECT COUNT(*) AS c FROM products");
@@ -507,7 +507,7 @@ app.get("/api/status", async (_req, res) => {
     res.json({ success: true, products: parseInt(p?.c||0), orders: parseInt(o?.c||0), time: new Date().toISOString() });
   } catch (e) { res.status(500).json({ success: false }); }
 });
-
+ 
 // ── Auth ──────────────────────────────────────────────────────
 app.post("/api/admin/login", async (req, res) => {
   const ip = req.ip || "0.0.0.0";
@@ -520,7 +520,7 @@ app.post("/api/admin/login", async (req, res) => {
     const email = str(req.body?.email, 200).toLowerCase();
     const pass  = str(req.body?.password, 200);
     if (!email || !pass) return res.status(400).json({ success: false, message: "Email and password are required." });
-
+ 
     const emailOk = crypto.timingSafeEqual(
       Buffer.from(email.padEnd(200)),
       Buffer.from(ADMIN_EMAIL.toLowerCase().padEnd(200))
@@ -545,12 +545,12 @@ app.post("/api/admin/login", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error." });
   }
 });
-
+ 
 app.get("/api/admin/verify", auth, (req, res) => {
   const token = makeToken(req.user.sub);
   res.json({ success: true, token });
 });
-
+ 
 app.post("/api/admin/logout", auth, async (req, res) => {
   try {
     await query(
@@ -560,7 +560,7 @@ app.post("/api/admin/logout", auth, async (req, res) => {
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: "Logout error." }); }
 });
-
+ 
 // ── Newsletter — BUG-02: saves to DB ─────────────────────────
 app.post("/api/subscribe", async (req, res) => {
   try {
@@ -579,7 +579,7 @@ app.post("/api/subscribe", async (req, res) => {
     res.status(500).json({ success: false, message: "Subscription error." });
   }
 });
-
+ 
 // ── Stats ─────────────────────────────────────────────────────
 app.get("/api/admin/stats", auth, async (req, res) => {
   try {
@@ -613,11 +613,11 @@ app.get("/api/admin/stats", auth, async (req, res) => {
     });
     const topProducts = Object.entries(pSales)
       .sort(([, a], [, b]) => b - a).slice(0, 5).map(([name, count]) => ({ name, count }));
-
+ 
     // Newsletter count
     const nlRow = await queryOne("SELECT COUNT(*) AS c FROM newsletters");
     const subscriberCount = parseInt(nlRow?.c || 0);
-
+ 
     res.json({
       success: true,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
@@ -626,7 +626,7 @@ app.get("/api/admin/stats", auth, async (req, res) => {
     });
   } catch (e) { res.status(500).json({ success: false, message: "Error loading stats." }); }
 });
-
+ 
 // ── Products ──────────────────────────────────────────────────
 app.get("/api/products", async (_req, res) => {
   try {
@@ -634,14 +634,14 @@ app.get("/api/products", async (_req, res) => {
     res.json({ success: true, products: rows.map(r => ({ ...r, images: JSON.parse(r.images || "[]") })) });
   } catch (e) { res.status(500).json({ success: false, message: "Error loading products." }); }
 });
-
+ 
 app.get("/api/admin/products", auth, async (_req, res) => {
   try {
     const rows = await query("SELECT * FROM products ORDER BY id DESC");
     res.json({ success: true, products: rows.map(r => ({ ...r, images: JSON.parse(r.images || "[]") })) });
   } catch (e) { res.status(500).json({ success: false, message: "Error." }); }
 });
-
+ 
 // POST — add product
 app.post("/api/admin/products", auth, checkCsrfMiddleware, async (req, res) => {
   try {
@@ -668,16 +668,16 @@ app.post("/api/admin/products", auth, checkCsrfMiddleware, async (req, res) => {
     res.json({ success: true, product: { ...product, images: JSON.parse(product.images) } });
   } catch (e) { res.status(500).json({ success: false, message: "Error adding product." }); }
 });
-
+ 
 // ISSUE-08: PUT — edit existing product
 app.put("/api/admin/products/:id", auth, checkCsrfMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id) || id < 1) return res.status(400).json({ success: false, message: "Invalid product ID." });
-
+ 
     const existing = await queryOne("SELECT * FROM products WHERE id=$1", [id]);
     if (!existing) return res.status(404).json({ success: false, message: "Product not found." });
-
+ 
     const name        = sanitize(str(req.body.name        ?? existing.name,         200));
     const price       = posFloat(req.body.price ?? existing.price, 999999) || posFloat(existing.price, 999999);
     const category    = sanitize(str(req.body.category    ?? existing.category,     100));
@@ -694,7 +694,7 @@ app.put("/api/admin/products/:id", auth, checkCsrfMiddleware, async (req, res) =
     }
     if (!name)  return res.status(400).json({ success: false, message: "Product name is required." });
     if (!price) return res.status(400).json({ success: false, message: "A valid positive price is required." });
-
+ 
     const rows = await query(
       "UPDATE products SET name=$1,price=$2,category=$3,description=$4,image1=$5,images=$6,supplier_sku=$7 WHERE id=$8 RETURNING *",
       [name, price, category, description, image1, JSON.stringify(imagesArr), supplierSku, id]
@@ -704,7 +704,7 @@ app.put("/api/admin/products/:id", auth, checkCsrfMiddleware, async (req, res) =
     res.json({ success: true, product: { ...product, images: JSON.parse(product.images) } });
   } catch (e) { res.status(500).json({ success: false, message: "Error updating product." }); }
 });
-
+ 
 app.delete("/api/admin/products/:id", auth, checkCsrfMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -714,19 +714,19 @@ app.delete("/api/admin/products/:id", auth, checkCsrfMiddleware, async (req, res
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: "Error deleting product." }); }
 });
-
+ 
 // ── Orders ────────────────────────────────────────────────────
 app.post("/api/create-order", async (req, res) => {
   try {
     const paypalOrderId = str(req.body?.paypalOrderId, 200);
     const items         = req.body?.items;
     const shippingRaw   = req.body?.shippingAddress || {};
-
+ 
     if (!paypalOrderId || paypalOrderId.length < 4)
       return res.status(400).json({ success: false, message: "Invalid PayPal order ID." });
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ success: false, message: "Cart is empty." });
-
+ 
     const fullName = str(shippingRaw.full_name || shippingRaw.name          || "", 200);
     const phone    = str(shippingRaw.phone                                    || "",  20);
     const country  = str(shippingRaw.country                                  || "", 100);
@@ -734,7 +734,7 @@ app.post("/api/create-order", async (req, res) => {
     const address  = str(shippingRaw.address || shippingRaw.address_line_1   || "", 500);
     const zipCode  = str(shippingRaw.zip_code || shippingRaw.postal_code     || "",  20);
     const email    = str(shippingRaw.email                                    || "", 200);
-
+ 
     if (!fullName) return res.status(400).json({ success: false, message: "Full name is required." });
     // SEC-03: phone validation
     if (!phone || !isValidPhone(phone)) return res.status(400).json({ success: false, message: "A valid phone number is required (7–20 digits)." });
@@ -742,7 +742,7 @@ app.post("/api/create-order", async (req, res) => {
     if (!city)    return res.status(400).json({ success: false, message: "City is required." });
     if (!address) return res.status(400).json({ success: false, message: "Address is required." });
     if (!zipCode) return res.status(400).json({ success: false, message: "Zip / postal code is required." });
-
+ 
     // Server-side price calculation
     let serverTotal = 0;
     const verified  = [];
@@ -756,14 +756,14 @@ app.post("/api/create-order", async (req, res) => {
       verified.push({ id: dbP.id, name: dbP.name, price: parseFloat(dbP.price), category: dbP.category, quantity: qty, supplier_sku: dbP.supplier_sku || "" });
     }
     serverTotal = Math.round(serverTotal * 100) / 100;
-
+ 
     const ppResult = await verifyPayPal(paypalOrderId, serverTotal);
     if (!ppResult.ok && !ppResult.skipped)
       return res.status(402).json({ success: false, message: `Payment verification failed: ${ppResult.reason}` });
-
+ 
     const customerEmail = isEmail(email) ? sanitize(email) : "";
     const orderId = `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-
+ 
     const client = await pool.connect();
     let txResult = { duplicate: false };
     try {
@@ -789,24 +789,24 @@ app.post("/api/create-order", async (req, res) => {
       await client.query("ROLLBACK");
       throw e;
     } finally { client.release(); }
-
+ 
     if (txResult.duplicate)
       return res.status(409).json({ success: false, message: "Order already processed." });
-
+ 
     log("INFO", `New order: ${orderId} total=${serverTotal}`);
     submitToCJAsync(orderId, verified, {
       fullName: sanitize(fullName), phone: sanitize(phone),
       country: sanitize(country), city: sanitize(city),
       address: sanitize(address), zipCode: sanitize(zipCode), email: customerEmail
     });
-
+ 
     res.json({ success: true, orderId, total: serverTotal });
   } catch (e) {
     log("ERROR", "Create order", e.message);
     res.status(500).json({ success: false, message: "Error creating order." });
   }
 });
-
+ 
 // ISSUE-09: Orders with filtering
 app.get("/api/admin/orders", auth, async (req, res) => {
   try {
@@ -815,14 +815,14 @@ app.get("/api/admin/orders", auth, async (req, res) => {
     const status  = str(req.query.status,  20) || null;
     const country = str(req.query.country, 10) || null;
     const from    = str(req.query.from,    30) || null;
-
+ 
     let where = [];
     let params = [];
     let idx = 1;
     if (status)  { where.push(`status=$${idx++}`);  params.push(status); }
     if (country) { where.push(`country=$${idx++}`); params.push(country); }
     if (from)    { where.push(`created_at>=$${idx++}`); params.push(from); }
-
+ 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
     const countRow = await queryOne(`SELECT COUNT(*) AS c FROM orders ${whereClause}`, params);
     const total    = parseInt(countRow?.c || 0, 10);
@@ -849,7 +849,7 @@ app.get("/api/admin/orders", auth, async (req, res) => {
     });
   } catch (e) { res.status(500).json({ success: false, message: "Error loading orders." }); }
 });
-
+ 
 // ── Subscribers admin list ─────────────────────────────────────
 app.get("/api/admin/subscribers", auth, async (req, res) => {
   try {
@@ -857,7 +857,7 @@ app.get("/api/admin/subscribers", auth, async (req, res) => {
     res.json({ success: true, subscribers: rows, total: rows.length });
   } catch (e) { res.status(500).json({ success: false, message: "Error." }); }
 });
-
+ 
 // ── CJ Webhook for shipping status updates ────────────────────
 // ISSUE-10: endpoint to receive CJ shipment updates
 app.post("/api/webhooks/cj", async (req, res) => {
@@ -873,18 +873,18 @@ app.post("/api/webhooks/cj", async (req, res) => {
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false }); }
 });
-
+ 
 // 404 for unknown /api/*
 app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
-
+ 
 // Global error handler
 app.use((err, _req, res, _next) => {
   log("ERROR", "Unhandled", err.message);
   res.status(500).json({ error: "Internal server error" });
 });
-
+ 
 process.on("uncaughtException",  e => log("ERROR", "Uncaught", e.message));
 process.on("unhandledRejection", e => log("ERROR", "UnhandledRejection", String(e)));
-
+ 
 const handler = serverless(app);
 module.exports = { handler };
