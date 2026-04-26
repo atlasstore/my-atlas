@@ -1,18 +1,12 @@
 {
   "name": "atlas-store",
   "version": "2.0.0",
-  "description": "ATLAS Premium Store — Netlify + PostgreSQL",
-  "main": "netlify/functions/api.js",
-  "scripts": {
-    "build": "echo 'No build step required'",
-    "hash": "node generate-hash.js"
-  },
   "dependencies": {
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "dotenv": "^16.3.1",
     "pg": "^8.11.3",
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "serverless-http": "^3.2.0"
   },
   "engines": {
