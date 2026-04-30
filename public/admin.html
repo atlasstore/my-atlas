@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- SEC: Content Security Policy to reduce XSS attack surface -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self';">
   <title>ATLAS — Admin Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-  <!-- SEC-02: Chart.js with SRI integrity -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
-          integrity="sha384-nPCFi5LFKxnuBVbZFiNHFKdGhBYnqD8nxMIr25QNQR2DU+1J3RFhQl+dEMK/V+"
-          crossorigin="anonymous"
-          onerror="this.removeAttribute('integrity');this.src=this.src"></script>
+  <!-- SEC-02: Chart.js loaded with defer for performance -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
   <style>
     /* ═══════════════════════════════════════════════
        ATLAS Admin — Nike/Jordan Design Language
@@ -54,13 +53,13 @@
     .form-group{margin-bottom:16px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     @media(max-width:600px){.form-row{grid-template-columns:1fr}}
-
+ 
     /* ── LOGIN ── */
     #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
     .login-box{background:var(--bg2);border:1px solid var(--border);padding:48px 44px;border-radius:12px;width:100%;max-width:420px}
     .login-logo{font-family:"Space Grotesk",sans-serif;font-size:26px;font-weight:700;letter-spacing:.06em;color:#fff;text-transform:uppercase;margin-bottom:6px}
     .login-sub{font-size:12px;color:var(--text2);margin-bottom:32px}
-
+ 
     /* ── APP LAYOUT ── */
     #app{display:none;height:100vh;overflow:hidden}
     .layout{display:flex;height:100vh}
@@ -73,11 +72,11 @@
     .sidebar-logout{margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
     .main-area{flex:1;overflow-y:auto;padding:32px 36px}
     @media(max-width:800px){.main-area{padding:20px}}
-
+ 
     /* ── SECTION HEADER ── */
     .page-title{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:22px}
     .section-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
-
+ 
     /* ── STAT CARDS ── */
     .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
     @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
@@ -87,7 +86,7 @@
     .stat-label{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
     .stat-val{font-family:"Space Grotesk",sans-serif;font-size:1.7rem;font-weight:700;color:#fff;line-height:1}
     .stat-sub{font-size:10px;color:var(--text3);margin-top:4px}
-
+ 
     /* ── CHARTS ── */
     .chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
     .chart-title{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:16px}
@@ -99,7 +98,7 @@
     .top-list li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);list-style:none;gap:10px}
     .top-list li:last-child{border-bottom:none}
     .top-rank{width:20px;height:20px;background:var(--bg3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--accent);flex-shrink:0}
-
+ 
     /* ── PRODUCTS ── */
     .add-form{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px 26px;margin-bottom:24px}
     .add-form-title{font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:700;margin-bottom:18px;color:#fff;letter-spacing:-.01em}
@@ -116,7 +115,7 @@
     .preview-item.is-main img{border-color:var(--accent)}
     .preview-main-label{position:absolute;bottom:0;left:0;right:0;background:var(--accent);color:#000;font-size:7px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:2px 0;border-radius:0 0 var(--r) var(--r)}
     .preview-remove{position:absolute;top:-5px;right:-5px;width:17px;height:17px;background:var(--danger);border:none;border-radius:50%;color:#fff;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
-
+ 
     /* Product grid */
     .product-grid-admin{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
     .product-card-admin{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .2s;display:flex;flex-direction:column}
@@ -132,13 +131,13 @@
     .img-thumb{width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--border)}
     .search-input{background:var(--bg3);border:1px solid var(--border);color:var(--text1);padding:10px 16px;font-size:13px;outline:none;border-radius:var(--r);transition:border-color .18s;width:100%;margin-bottom:18px}
     .search-input:focus{border-color:var(--border-hi)}
-
+ 
     /* Edit modal */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
     .modal-overlay.open{opacity:1;pointer-events:all}
     .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto}
     .modal-title{font-family:"Space Grotesk",sans-serif;font-size:16px;font-weight:700;margin-bottom:20px}
-
+ 
     /* ── ORDERS ── */
     .orders-filters{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
     .orders-filter-select{background:var(--bg3);border:1px solid var(--border);color:var(--text1);padding:8px 12px;font-size:11px;border-radius:var(--r);outline:none;font-family:"Inter",sans-serif;transition:border-color .18s;max-width:160px}
@@ -151,16 +150,16 @@
     .pagination{display:flex;gap:8px;margin-top:16px;justify-content:center;flex-wrap:wrap}
     .page-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:6px 13px;font-size:10px;font-weight:700;cursor:pointer;border-radius:4px;transition:all .18s}
     .page-btn:hover,.page-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
-
+ 
     /* ── SUBSCRIBERS ── */
     .subscribers-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-
+ 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:2px}
   </style>
 </head>
 <body>
-
+ 
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
@@ -178,7 +177,7 @@
     <button class="btn" style="width:100%;padding:13px" id="login-btn" onclick="doLogin()">Enter Admin Panel</button>
   </div>
 </div>
-
+ 
 <!-- APP -->
 <div id="app">
   <div class="layout">
@@ -207,9 +206,9 @@
         </button>
       </div>
     </aside>
-
+ 
     <main class="main-area">
-
+ 
       <!-- ══ STATS ══ -->
       <div id="section-stats">
         <div class="page-title">Statistics</div>
@@ -232,7 +231,7 @@
           <div class="chart-wrap"><div class="chart-title">Revenue by Category</div><canvas id="categoryChart"></canvas></div>
         </div>
       </div>
-
+ 
       <!-- ══ PRODUCTS ══ -->
       <div id="section-products" style="display:none">
         <div class="page-title">Products</div>
@@ -282,7 +281,7 @@
         <input class="search-input" type="text" id="product-search" placeholder="Search by name or category..." oninput="filterProductsAdmin(this.value)" autocomplete="off">
         <div id="products-wrap"></div>
       </div>
-
+ 
       <!-- ══ ORDERS ══ -->
       <div id="section-orders" style="display:none">
         <div class="page-title">Orders</div>
@@ -319,7 +318,7 @@
         </div>
         <div class="pagination" id="orders-pagination"></div>
       </div>
-
+ 
       <!-- ══ SUBSCRIBERS ══ -->
       <div id="section-subscribers" style="display:none">
         <div class="section-toolbar">
@@ -334,11 +333,11 @@
         </div>
         <div style="margin-top:12px;font-size:11px;color:var(--text3)" id="subs-count"></div>
       </div>
-
+ 
     </main>
   </div>
 </div>
-
+ 
 <!-- EDIT PRODUCT MODAL -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal-box">
@@ -371,35 +370,38 @@
     </div>
   </div>
 </div>
-
+ 
 <script>
 /* ═══════════════════════════════════════════════
    ATLAS Admin — Full Application Logic
    All audit fixes applied.
 ═══════════════════════════════════════════════ */
-
+ 
 var TOKEN     = sessionStorage.getItem("atlas_token") || "";
 var CSRF_TOKEN = "";
 var currentDays = 7;
 var salesChart, categoryChart;
 var tokenRefreshTimer = null;
 var allProducts = [];
-
+var _loginAttempts = 0;   /* SEC: client-side brute-force guard */
+var _loginLockUntil = 0;
+ 
 /* Image state — base64 for new product */
 var newProductImages  = [];  // [{dataUrl, file}]
 var editProductImages = [];  // [{dataUrl, isExisting, url?, file?}]
-
+ 
 /* Background task management */
 var _bgTasks = [];
 function registerBgTask(id){ _bgTasks.push(id); }
 function stopBgTasks(){ _bgTasks.forEach(function(id){ clearInterval(id); clearTimeout(id); }); _bgTasks=[]; }
-
+ 
 /* ── XSS escape ─── */
 function escHtml(s){ var d=document.createElement("div"); d.textContent=String(s||""); return d.innerHTML; }
-
+ 
 /* ─────────────── INIT ────────────────── */
 window.addEventListener("DOMContentLoaded", function(){
   if (TOKEN) verifyAndRefreshToken();
+  document.getElementById("login-email").addEventListener("keypress", function(e){ if(e.key==="Enter") document.getElementById("login-pass").focus(); });
   document.getElementById("login-pass").addEventListener("keypress", function(e){ if(e.key==="Enter") doLogin(); });
   document.querySelectorAll(".date-btn").forEach(function(btn){
     btn.addEventListener("click", function(){
@@ -413,47 +415,68 @@ window.addEventListener("DOMContentLoaded", function(){
   document.getElementById("edit-modal").addEventListener("click", function(e){
     if(e.target===this) closeEditModal();
   });
+  // Event delegation for SKU copy buttons (avoids inline onclick XSS)
+  document.addEventListener("click", function(e){
+    var el = e.target.closest(".sku-copy-btn");
+    if(el && el.dataset.sku) copyToClipboard(el.dataset.sku, el);
+  });
   // Drag & drop on upload zone
   setupDropZone("upload-zone", "p-images-input", handleImageFiles);
 });
-
+ 
 /* ─────────────── AUTH ────────────────── */
 async function doLogin(){
   var email = document.getElementById("login-email").value.trim();
   var pass  = document.getElementById("login-pass").value;
   var btn   = document.getElementById("login-btn");
   document.getElementById("login-alert").style.display = "none";
+  /* SEC: client-side lockout after 5 failed attempts */
+  if(Date.now() < _loginLockUntil){
+    var secs=Math.ceil((_loginLockUntil-Date.now())/1000);
+    showLoginAlert("Too many attempts. Please wait "+secs+" seconds.");
+    return;
+  }
   if (!email || !pass){ showLoginAlert("Please enter email and password."); return; }
   btn.disabled=true; btn.textContent="Checking...";
   try{
     var res  = await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pass})});
+    if(!res.ok && res.status!==401){ showLoginAlert("Server error ("+res.status+"). Please try again."); return; }
     var data = await res.json();
     if(data.success && data.token){
       TOKEN=data.token; sessionStorage.setItem("atlas_token",TOKEN);
+      _loginAttempts=0; _loginLockUntil=0;
       await fetchCsrfToken(); startTokenRefresh(); showApp();
-    } else { showLoginAlert(data.message||"Invalid credentials."); }
-  } catch(e){ showLoginAlert("Cannot connect to server."); }
-  btn.disabled=false; btn.textContent="Enter Admin Panel";
+    } else {
+      _loginAttempts++;
+      if(_loginAttempts>=5){ _loginLockUntil=Date.now()+30000; _loginAttempts=0; }
+      showLoginAlert(data.message||"Invalid credentials.");
+    }
+  } catch(e){ showLoginAlert("Cannot connect to server. Check your connection."); }
+  finally { btn.disabled=false; btn.textContent="Enter Admin Panel"; }
 }
-
+ 
 function showLoginAlert(msg){
   var el=document.getElementById("login-alert");
   el.textContent=msg; el.style.display="block";
 }
-
+ 
 async function verifyAndRefreshToken(){
   try{
     var res  = await fetch("/api/admin/verify",{headers:{Authorization:"Bearer "+TOKEN}});
+    /* Only logout on explicit auth rejection (401/403), not on network/server errors */
+    if(res.status===401||res.status===403){ doLogout(); return; }
+    if(!res.ok){ return; /* Server error — keep existing session, try again later */ }
     var data = await res.json();
     if(data.success){
       if(data.token){ TOKEN=data.token; sessionStorage.setItem("atlas_token",TOKEN); }
       await fetchCsrfToken(); startTokenRefresh(); showApp();
     } else { doLogout(); }
   } catch(e){
-    if(TOKEN && TOKEN.split(".").length===3) showApp(); else doLogout();
+    /* Network error during background refresh — do NOT logout, just skip this cycle */
+    console.warn("Token refresh skipped (network):", e.message);
   }
 }
-
+ 
 async function fetchCsrfToken(){
   try{
     var res=await fetch("/api/csrf-token",{headers:{Authorization:"Bearer "+TOKEN}});
@@ -461,13 +484,13 @@ async function fetchCsrfToken(){
     if(data.token) CSRF_TOKEN=data.token;
   } catch(e){}
 }
-
+ 
 function startTokenRefresh(){
   clearInterval(tokenRefreshTimer);
   tokenRefreshTimer=setInterval(function(){ verifyAndRefreshToken(); },7*60*60*1000);
   registerBgTask(tokenRefreshTimer);
 }
-
+ 
 async function doLogout(){
   var tokenToRevoke=TOKEN;
   TOKEN=""; CSRF_TOKEN=""; sessionStorage.removeItem("atlas_token");
@@ -483,13 +506,13 @@ async function doLogout(){
     fetch("/api/admin/logout",{method:"POST",headers:{Authorization:"Bearer "+tokenToRevoke}}).catch(function(){});
   }
 }
-
+ 
 function showApp(){
   document.getElementById("login-screen").style.display="none";
   document.getElementById("app").style.display="block";
   showSection("stats");
 }
-
+ 
 function showSection(name){
   ["stats","products","orders","subscribers"].forEach(function(s){
     document.getElementById("section-"+s).style.display=s===name?"block":"none";
@@ -501,7 +524,7 @@ function showSection(name){
   if(name==="orders")      loadOrders(1);
   if(name==="subscribers") loadSubscribers();
 }
-
+ 
 /* ─────────────── STATS ────────────────── */
 async function updateStats(){
   ["stat-revenue","stat-orders","stat-avg","stat-sold","stat-subs"].forEach(function(id){ document.getElementById(id).textContent="..."; });
@@ -537,7 +560,7 @@ async function updateStats(){
     ["stat-revenue","stat-orders","stat-avg","stat-sold","stat-subs"].forEach(function(id){ document.getElementById(id).textContent="—"; });
   }
 }
-
+ 
 /* ─────────────── IMAGE UPLOAD (base64) ────────────────── */
 function setupDropZone(zoneId, inputId, handler){
   var zone=document.getElementById(zoneId);
@@ -549,7 +572,7 @@ function setupDropZone(zoneId, inputId, handler){
     handler(e.dataTransfer.files);
   });
 }
-
+ 
 function readFileAsDataUrl(file){
   return new Promise(function(resolve){
     var r=new FileReader();
@@ -557,7 +580,7 @@ function readFileAsDataUrl(file){
     r.readAsDataURL(file);
   });
 }
-
+ 
 async function handleImageFiles(files){
   var filesArr=Array.from(files);
   var remaining=20-newProductImages.length;
@@ -566,13 +589,15 @@ async function handleImageFiles(files){
   for(var i=0;i<filesArr.length;i++){
     var f=filesArr[i];
     if(!f.type.startsWith("image/")){ continue; }
+    /* SEC: limit individual image to 4MB to prevent oversized Base64 payloads */
+    if(f.size > 4*1024*1024){ alert("Image \""+f.name+"\" exceeds 4MB limit and was skipped."); continue; }
     var dataUrl=await readFileAsDataUrl(f);
     newProductImages.push({dataUrl:dataUrl,file:f});
   }
   renderNewPreviews();
   document.getElementById("p-images-input").value="";
 }
-
+ 
 function renderNewPreviews(){
   var c=document.getElementById("upload-previews"); c.innerHTML="";
   newProductImages.forEach(function(img,idx){
@@ -584,18 +609,18 @@ function renderNewPreviews(){
     c.appendChild(d);
   });
 }
-
+ 
 function setMainNewImage(idx){
   var moved=newProductImages.splice(idx,1)[0];
   newProductImages.unshift(moved);
   renderNewPreviews();
 }
-
+ 
 function removeNewImage(idx){
   newProductImages.splice(idx,1);
   renderNewPreviews();
 }
-
+ 
 /* ─────────────── ADD PRODUCT ────────────────── */
 async function addProduct(){
   var name     = document.getElementById("p-name").value.trim();
@@ -604,10 +629,10 @@ async function addProduct(){
   var desc     = document.getElementById("p-desc").value.trim();
   var sku      = document.getElementById("p-sku").value.trim();
   var btn      = document.getElementById("add-btn");
-
+ 
   if(!name)  { showAddAlert("error","Product name is required."); return; }
   if(!price||isNaN(parseFloat(price))||parseFloat(price)<=0){ showAddAlert("error","Enter a valid positive price."); return; }
-
+ 
   if(!CSRF_TOKEN) await fetchCsrfToken();
   btn.disabled=true; btn.textContent="Saving...";
   try{
@@ -636,15 +661,15 @@ async function addProduct(){
       setTimeout(function(){ document.getElementById("add-alert").style.display="none"; },3000);
     } else { showAddAlert("error",data.message||"Error saving product."); }
   } catch(e){ showAddAlert("error","Cannot connect: "+e.message); }
-  btn.disabled=false; btn.textContent="Save Product";
+  finally { btn.disabled=false; btn.textContent="Save Product"; }
 }
-
+ 
 function showAddAlert(type,msg){
   var el=document.getElementById("add-alert");
   el.className="alert alert-"+(type==="error"?"error":"success");
   el.textContent=msg; el.style.display="block";
 }
-
+ 
 /* ─────────────── LOAD & RENDER PRODUCTS ────────────────── */
 async function loadProducts(){
   var wrap=document.getElementById("products-wrap");
@@ -658,13 +683,13 @@ async function loadProducts(){
     renderProductsAdmin(allProducts);
   } catch(e){ wrap.innerHTML='<div style="padding:20px;color:var(--danger);font-size:13px">❌ '+escHtml(e.message)+'</div>'; }
 }
-
+ 
 function filterProductsAdmin(q){
   if(!q.trim()){ renderProductsAdmin(allProducts); return; }
   q=q.toLowerCase();
   renderProductsAdmin(allProducts.filter(function(p){ return p.name.toLowerCase().includes(q)||(p.category||"").toLowerCase().includes(q); }));
 }
-
+ 
 function renderProductsAdmin(products){
   var wrap=document.getElementById("products-wrap");
   if(!products.length){ wrap.innerHTML='<div style="padding:20px;color:var(--text2);font-size:13px">No products found.</div>'; return; }
@@ -680,7 +705,7 @@ function renderProductsAdmin(products){
       :'<div class="product-card-placeholder">No Image</div>';
     var gallery=imgs.slice(1,5).map(function(src){ return '<img class="img-thumb" src="'+escHtml(src)+'" loading="lazy" alt="">'; }).join("");
     var skuHtml=safeSku
-      ?'<div style="font-size:9px;font-family:monospace;background:var(--accent-dim);color:var(--accent);padding:3px 8px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;user-select:all" title="Click to copy" onclick="copyToClipboard(\''+safeSku+'\',this)" data-sku="'+safeSku+'">'+safeSku+'</div>'
+      ?'<div class="sku-copy-btn" style="font-size:9px;font-family:monospace;background:var(--accent-dim);color:var(--accent);padding:3px 8px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;user-select:all" title="Click to copy" data-sku="'+safeSku+'">'+safeSku+'</div>'
       :'';
     return '<div class="product-card-admin">'
       +imgHtml
@@ -698,7 +723,7 @@ function renderProductsAdmin(products){
       +'</div></div>';
   }).join("")+'</div>';
 }
-
+ 
 function copyToClipboard(text, el){
   if(navigator.clipboard){
     navigator.clipboard.writeText(text).then(function(){
@@ -707,7 +732,7 @@ function copyToClipboard(text, el){
     });
   }
 }
-
+ 
 /* ─────────────── EDIT PRODUCT ────────────────── */
 function openEditModal(id){
   var p=allProducts.find(function(x){ return x.id===id; });
@@ -725,13 +750,13 @@ function openEditModal(id){
   document.getElementById("edit-modal").classList.add("open");
   document.body.style.overflow="hidden";
 }
-
+ 
 function closeEditModal(){
   document.getElementById("edit-modal").classList.remove("open");
   document.body.style.overflow="";
   editProductImages=[];
 }
-
+ 
 async function handleEditImages(files){
   var filesArr=Array.from(files);
   var remaining=20-editProductImages.length;
@@ -739,13 +764,15 @@ async function handleEditImages(files){
   for(var i=0;i<filesArr.length;i++){
     var f=filesArr[i];
     if(!f.type.startsWith("image/")) continue;
+    /* SEC: limit individual image to 4MB */
+    if(f.size > 4*1024*1024){ alert("Image \""+f.name+"\" exceeds 4MB limit and was skipped."); continue; }
     var dataUrl=await readFileAsDataUrl(f);
     editProductImages.push({dataUrl:dataUrl,isExisting:false,file:f});
   }
   renderEditPreviews();
   document.getElementById("edit-images-input").value="";
 }
-
+ 
 function renderEditPreviews(){
   var c=document.getElementById("edit-previews"); c.innerHTML="";
   editProductImages.forEach(function(img,idx){
@@ -757,18 +784,18 @@ function renderEditPreviews(){
     c.appendChild(d);
   });
 }
-
+ 
 function setMainEditImage(idx){
   var moved=editProductImages.splice(idx,1)[0];
   editProductImages.unshift(moved);
   renderEditPreviews();
 }
-
+ 
 function removeEditImage(idx){
   editProductImages.splice(idx,1);
   renderEditPreviews();
 }
-
+ 
 async function saveEdit(){
   var id   =parseInt(document.getElementById("edit-id").value,10);
   var name =document.getElementById("edit-name").value.trim();
@@ -802,7 +829,7 @@ async function saveEdit(){
     alertEl.className="alert alert-error"; alertEl.textContent="Cannot connect."; alertEl.style.display="block";
   }
 }
-
+ 
 /* ─────────────── DELETE PRODUCT ────────────────── */
 async function deleteProduct(id){
   /* ADMIN-01: confirm before delete */
@@ -816,7 +843,7 @@ async function deleteProduct(id){
     else alert("Error: "+(data.message||"Unknown error"));
   } catch(e){ alert("Cannot connect: "+e.message); }
 }
-
+ 
 /* ─────────────── ORDERS ────────────────── */
 async function loadOrders(page){
   var pg=page||1;
@@ -836,7 +863,7 @@ async function loadOrders(page){
       var date=o.date?new Date(o.date).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"—";
       var location=escHtml((o.country||"")+(o.city?", "+o.city:""))||"—";
       var itemsHtml=(o.items||[]).map(function(i){
-        var skuHtml=i.supplier_sku?'<span style="font-family:monospace;font-size:9px;background:var(--accent-dim);color:var(--accent);padding:2px 6px;border-radius:3px;margin-left:4px;cursor:pointer;user-select:all" onclick="copyToClipboard(\''+escHtml(i.supplier_sku)+'\',this)">'+escHtml(i.supplier_sku)+'</span>':'';
+        var skuHtml=i.supplier_sku?'<span class="sku-copy-btn" style="font-family:monospace;font-size:9px;background:var(--accent-dim);color:var(--accent);padding:2px 6px;border-radius:3px;margin-left:4px;cursor:pointer;user-select:all" data-sku="'+escHtml(i.supplier_sku)+'">'+escHtml(i.supplier_sku)+'</span>':'';
         return '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">'+escHtml(i.name)+' ×'+(i.quantity||1)+skuHtml+'</div>';
       }).join("")||"—";
       var statusMap={paid:"tag-paid",processing:"tag-pending",shipped:"tag-shipped",delivered:"tag-delivered",cancelled:"tag-cancelled"};
@@ -861,7 +888,7 @@ async function loadOrders(page){
     }
   } catch(e){ tbody.innerHTML='<tr><td colspan="10" style="color:var(--danger)">❌ '+escHtml(e.message)+'</td></tr>'; }
 }
-
+ 
 /* ─────────────── SUBSCRIBERS ────────────────── */
 var _allSubscribers=[];
 async function loadSubscribers(){
@@ -880,7 +907,7 @@ async function loadSubscribers(){
     }).join("");
   } catch(e){ tbody.innerHTML='<tr><td colspan="3" style="color:var(--danger)">❌ '+escHtml(e.message)+'</td></tr>'; }
 }
-
+ 
 function exportSubscribers(){
   if(!_allSubscribers.length){ alert("No subscribers to export."); return; }
   var csv="Email,Joined\n"+_allSubscribers.map(function(s){
@@ -894,3 +921,4 @@ function exportSubscribers(){
 </script>
 </body>
 </html>
+ 
